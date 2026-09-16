@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Propinas - Control de Turnos</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- SheetJS para la exportación portable a Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- HEADER -->
+    <header>
+      <div class="brand">
+        <h1>Sistema de Propinas</h1>
+        <p>Control automatizado por turnos (AM/PM) para Cocina, Caja y Encargados</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary btn-icon" onclick="toggleTheme()" id="theme-btn" title="Alternar Modo Oscuro/Claro">
+          <span id="theme-icon"></span>
+        </button>
+        <button class="btn btn-success" onclick="exportToExcel()" title="Descargar planilla Excel actual">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+          </svg>
+          Exportar a Excel
+        </button>
+      </div>
+    </header>
+
+    <!-- TABS DE NAVEGACIÓN PRINCIPAL -->
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('daily-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Carga Diaria
+      </button>
+      <button class="tab-btn" onclick="switchTab('summary-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Resumen Semanal
+      </button>
+      <button class="tab-btn" onclick="switchTab('waiters-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Personal
+      </button>
+      <button class="tab-btn" onclick="switchTab('config-tab')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Ajustes
+      </button>
+    </div>
+
+    <!-- CUERPO PRINCIPAL CON DOBLE COLUMNA -->
+    <div class="grid-main">
+      
+      <!-- COLUMNA SIDEBAR: HISTORIAL DE PLANILLAS -->
+      <aside class="card">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+          Semanas Activas
+        </h2>
+        
+        <!-- Crear nueva semana -->
+        <form id="new-week-form" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-glass);">
+          <div class="form-group">
+            <label for="new-week-start-date">Nueva Planilla (Inicio)</label>
+            <input type="date" id="new-week-start-date" class="form-control" required />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Nueva Semana</button>
+        </form>
+
+        <!-- Lista de semanas -->
+        <div class="week-list" id="weeks-list-container">
+          <!-- Dinámico -->
+        </div>
+      </aside>
+
+      <!-- CONTENIDOS DE LAS PESTAÑAS -->
+      <main>
+        
+        <!-- PESTAÑA 1: CARGA DIARIA (PLANILLA DIARIA) -->
+        <section id="daily-tab" class="tab-content active">
+          
+          <!-- Sub-selector de días de la semana -->
+          <div class="day-selector" id="day-tab-selector">
+            <!-- Botones dinámicos para los 7 días de la semana -->
+          </div>
+
+          <div class="card">
+            <h2 id="current-day-title">Planilla del Día: Cargando...</h2>
+            
+            <!-- Resumen rápido del día -->
+            <div class="kpi-container" style="margin-top: 10px; margin-bottom: 30px;">
+              <div class="kpi-card">
+                <span class="kpi-title">Ventas del Día</span>
+                <span class="kpi-value" id="day-val-sales">$0</span>
+              </div>
+              <div class="kpi-card">
+                <span class="kpi-title">Propina Estimada (<span class="kpi-tip-perc">5</span>%)</span>
+                <span class="kpi-value" id="day-val-tip">$0</span>
+              </div>
+              <div class="kpi-card kpi-warning">
+                <span class="kpi-title">Aporte Retención (<span class="kpi-ret-perc">30</span>%)</span>
+                <span class="kpi-value" id="day-val-ret" style="color: var(--warning);">$0</span>
+              </div>
+            </div>
+
+            <!-- Grid de Turnos AM y PM -->
+            <div class="grid-2">
+              
+              <!-- Turno Mañana (AM) -->
+              <div>
+                <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;" class="shift-am-heading">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%;" class="shift-am-dot"></span>
+                  Turno Mañana (AM)
+                </h3>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Mozo</th>
+                        <th style="text-align: right;">Total Vendido ($)</th>
+                        <th style="text-align: right;">Propina Est.</th>
+                        <th style="text-align: right;">A Entregar</th>
+                      </tr>
+                    </thead>
+                    <tbody id="am-table-body">
+                      <!-- Dinámico -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Turno Noche (PM) -->
+              <div>
+                <h3 style="font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;" class="shift-pm-heading">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%;" class="shift-pm-dot"></span>
+                  Turno Noche (PM)
+                </h3>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Mozo</th>
+                        <th style="text-align: right;">Total Vendido ($)</th>
+                        <th style="text-align: right;">Propina Est.</th>
+                        <th style="text-align: right;">A Entregar</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pm-table-body">
+                      <!-- Dinámico -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- PESTAÑA 2: RESUMEN SEMANAL -->
+        <section id="summary-tab" class="tab-content">
+          <div class="card">
+            <h2 id="summary-week-title">Resumen Semanal de Control</h2>
+            
+            <!-- KPIs de la semana -->
+            <div class="kpi-container">
+              <div class="kpi-card">
+                <span class="kpi-title">Propinas Generadas</span>
+                <span class="kpi-value" id="kpi-weekly-tips">$0</span>
+              </div>
+              <div class="kpi-card kpi-warning">
+                <span class="kpi-title">Pozo Retenido (30%)</span>
+                <span class="kpi-value" id="kpi-weekly-retained" style="color: var(--warning);">$0</span>
+              </div>
+              <div class="kpi-card">
+                <span class="kpi-title">Promedio por Mozo</span>
+                <span class="kpi-value" id="kpi-weekly-avg-waiter">$0</span>
+              </div>
+              <div class="kpi-card">
+                <span class="kpi-title">Promedio por Turno</span>
+                <span class="kpi-value" id="kpi-weekly-avg-turn">$0</span>
+              </div>
+            </div>
+
+            <!-- Tabla de Consolidado Semanal -->
+            <div class="table-container" style="margin-bottom: 30px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Mozo</th>
+                    <th style="text-align: right;">Total Vendido ($)</th>
+                    <th style="text-align: right;">Propina Estimada</th>
+                    <th style="text-align: right;">Aporte/Retención</th>
+                    <th style="text-align: center;">Turnos Trab.</th>
+                    <th style="text-align: right;">Promedio Propina / Turno</th>
+                  </tr>
+                </thead>
+                <tbody id="summary-table-body">
+                  <!-- Dinámico -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PANEL DE REPARTO DEL POZO -->
+            <div style="border-top: 1px solid var(--border-glass); padding-top: 24px;">
+              <h3 style="font-size: 18px; margin-bottom: 8px;">Distribución del Pozo de Retención</h3>
+              <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+                Define el factor de participación por persona. El sistema calculará automáticamente la proporción correspondiente según la cantidad de personas de cada grupo.
+              </p>
+
+              <!-- Inputs de Configuración del Reparto -->
+              <div style="background: var(--list-item-bg); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-glass); display: flex; flex-direction: column; gap: 16px;">
+                <!-- Factores de Reparto -->
+                <div class="grid-3">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-dist-cocina">COCINA (FACTOR)</label>
+                    <input type="number" id="cfg-dist-cocina" class="form-control" value="8" min="0" onchange="updateDistConfig('distCocina', this.value)" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-dist-caja">CAJA (FACTOR)</label>
+                    <input type="number" id="cfg-dist-caja" class="form-control" value="7" min="0" onchange="updateDistConfig('distCaja', this.value)" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-dist-encargados">ENCARGADOS (FACTOR)</label>
+                    <input type="number" id="cfg-dist-encargados" class="form-control" value="7" min="0" onchange="updateDistConfig('distEncargados', this.value)" />
+                  </div>
+                </div>
+                <!-- Cantidad de Personas -->
+                <div class="grid-3">
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-people-cocina">COCINA (PERSONAS)</label>
+                    <input type="number" id="cfg-people-cocina" class="form-control" value="7" min="0" onchange="updatePeopleConfig('peopleCocina', this.value)" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-people-caja">CAJA (PERSONAS)</label>
+                    <input type="number" id="cfg-people-caja" class="form-control" value="2" min="0" onchange="updatePeopleConfig('peopleCaja', this.value)" />
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0;">
+                    <label for="cfg-people-encargados">ENCARGADOS (PERSONAS)</label>
+                    <input type="number" id="cfg-people-encargados" class="form-control" value="2" min="0" onchange="updatePeopleConfig('peopleEncargados', this.value)" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resultados en Tarjetas KPI rápidas -->
+              <div class="grid-3" style="margin-top: 20px;">
+                <div class="kpi-card kpi-success" style="border: 1px solid var(--border-glass);">
+                  <span class="kpi-title"><span class="dist-badge dist-cocina">Cocina</span></span>
+                  <span class="kpi-value" id="dist-val-cocina">$0</span>
+                </div>
+                <div class="kpi-card kpi-success" style="border: 1px solid var(--border-glass);">
+                  <span class="kpi-title"><span class="dist-badge dist-caja">Caja</span></span>
+                  <span class="kpi-value" id="dist-val-caja">$0</span>
+                </div>
+                <div class="kpi-card kpi-success" style="border: 1px solid var(--border-glass);">
+                  <span class="kpi-title"><span class="dist-badge dist-encargados">Encargados</span></span>
+                  <span class="kpi-value" id="dist-val-encargados">$0</span>
+                </div>
+              </div>
+              
+              <!-- Total general repartido -->
+              <div style="margin-top: 12px; text-align: right; font-size: 16px; font-weight: 600;">
+                Total Repartido: <span id="dist-val-total" style="color: var(--success);">$0</span>
+              </div>
+
+              <!-- PANEL DE ADELANTOS DEL POZO -->
+              <div style="margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--border-glass);">
+                <h4 style="font-size: 15px; font-weight: 600; margin-bottom: 8px;">Adelantos de Personal del Pozo (Cocina, Caja, Encargados)</h4>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">
+                  Registra adelantos entregados a miembros de cocina, caja o encargados. Se deducirán de la liquidación final de su respectivo grupo.
+                </p>
+                <form id="pool-advance-form" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: flex-end;">
+                  <div class="form-group" style="margin-bottom: 0; width: 160px;">
+                    <label for="pool-adv-role">Grupo</label>
+                    <select id="pool-adv-role" class="form-control" style="background: var(--input-bg);" onchange="updateAdvanceStaffDropdown()" required>
+                      <option value="Cocina">Cocina</option>
+                      <option value="Caja">Caja</option>
+                      <option value="Encargados">Encargados</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label for="pool-adv-staff-select">Colaborador / Empleado</label>
+                    <select id="pool-adv-staff-select" class="form-control" style="background: var(--input-bg);" required>
+                      <!-- Dinámico según grupo seleccionado -->
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0; width: 150px;">
+                    <label for="pool-adv-amount">Adelanto ($)</label>
+                    <input type="number" id="pool-adv-amount" class="form-control" placeholder="0" min="1" required />
+                  </div>
+                  <button type="submit" class="btn btn-primary" style="height: 41px; padding: 0 24px;">Registrar Adelanto</button>
+                </form>
+
+                <!-- Lista de adelantos de pozo registrados -->
+                <div id="pool-advances-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;">
+                  <!-- Dinámico -->
+                </div>
+              </div>
+
+              <!-- Desglose y Resumen Detallado del Reparto -->
+              <h4 style="font-size: 15px; font-weight: 600; margin-top: 24px; margin-bottom: 12px;">Vista de Resumen de Distribución por Grupos</h4>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Grupo</th>
+                      <th style="text-align: center;">Personas</th>
+                      <th style="text-align: center;">Factor</th>
+                      <th style="text-align: center;">Puntos</th>
+                      <th style="text-align: center;">Participación</th>
+                      <th style="text-align: right;">Importe Bruto</th>
+                      <th style="text-align: right;">Adelantos</th>
+                      <th style="text-align: right;">Neto Grupo</th>
+                      <th style="text-align: right;">Por Persona</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dist-summary-table-body">
+                    <!-- Dinámico -->
+                  </tbody>
+                  <tfoot>
+                    <tr class="total-row" id="dist-summary-total-row">
+                      <!-- Dinámico -->
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <!-- LIQUIDACIÓN INDIVIDUAL NETA DEL PERSONAL DEL POZO -->
+              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-glass);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                  <div>
+                    <h4 style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">Liquidación Individual Neta (Personal del Pozo)</h4>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 0;">
+                      Detalle individual a pagar en mano a cada miembro tras deducir sus adelantos particulares. Genera comprobantes impresos de pago.
+                    </p>
+                  </div>
+                </div>
+                <div class="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Colaborador</th>
+                        <th>Área / Rol</th>
+                        <th style="text-align: right;">Importe Bruto</th>
+                        <th style="text-align: right;">Adelantos Registrados</th>
+                        <th style="text-align: right;">Neto a Percibir</th>
+                        <th style="text-align: center;">Comprobante</th>
+                      </tr>
+                    </thead>
+                    <tbody id="staff-liquidation-table-body">
+                      <!-- Dinámico -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- PESTAÑA 3: GESTIÓN DE PERSONAL -->
+        <section id="waiters-tab" class="tab-content">
+          <div class="card">
+            <h2>Gestión de Nómina y Personal</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 20px;">
+              Administra la nómina activa de Salón (Camareros) y del Personal del Pozo (Cocina, Caja, Encargados). Los repartos y dotaciones se sincronizan automáticamente.
+            </p>
+
+            <!-- Subtabs de áreas de personal -->
+            <div class="subtabs-nav">
+              <button class="subtab-btn active" id="subtab-btn-all" onclick="filterStaffTab('all')">
+                Todos <span class="staff-count-badge" id="badge-count-all">0</span>
+              </button>
+              <button class="subtab-btn" id="subtab-btn-waiters" onclick="filterStaffTab('Camareros')">
+                Camareros (Salón) <span class="staff-count-badge" id="badge-count-waiters">0</span>
+              </button>
+              <button class="subtab-btn" id="subtab-btn-cocina" onclick="filterStaffTab('Cocina')">
+                Cocina <span class="staff-count-badge" id="badge-count-cocina">0</span>
+              </button>
+              <button class="subtab-btn" id="subtab-btn-caja" onclick="filterStaffTab('Caja')">
+                Caja <span class="staff-count-badge" id="badge-count-caja">0</span>
+              </button>
+              <button class="subtab-btn" id="subtab-btn-encargados" onclick="filterStaffTab('Encargados')">
+                Encargados <span class="staff-count-badge" id="badge-count-encargados">0</span>
+              </button>
+            </div>
+
+            <!-- Formulario agregar colaborador -->
+            <form id="new-staff-form" style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 30px; align-items: flex-end;">
+              <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 240px;">
+                <label for="new-staff-name">Nombre y Apellido</label>
+                <input type="text" id="new-staff-name" class="form-control" placeholder="Ej: CARLOS GÓMEZ" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0; width: 180px;">
+                <label for="new-staff-role">Área / Puesto</label>
+                <select id="new-staff-role" class="form-control" style="background: var(--input-bg);" required>
+                  <option value="Camareros">Camarero (Salón)</option>
+                  <option value="Cocina">Cocina</option>
+                  <option value="Caja">Caja</option>
+                  <option value="Encargados">Encargados</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary" style="height: 41px; padding: 0 24px;">Agregar Colaborador</button>
+            </form>
+
+            <!-- Grid de colaboradores -->
+            <div class="staff-grid" id="staff-cards-container">
+              <!-- Dinámico -->
+            </div>
+          </div>
+        </section>
+
+        <!-- PESTAÑA 4: AJUSTES -->
+        <section id="config-tab" class="tab-content">
+          <div class="card">
+            <h2>Configuraciones Generales de Fórmulas</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
+              Modifica los porcentajes base de cálculo del sistema. Los cambios afectarán automáticamente las planillas cargadas.
+            </p>
+
+            <div class="grid-2" style="margin-bottom: 40px;">
+              <div class="form-group">
+                <label for="cfg-tip-perc">Porcentaje de Propina Estimada (%)</label>
+                <input type="number" id="cfg-tip-perc" class="form-control" min="0" max="100" step="0.1" onchange="updateGlobalConfig('tipPercentage', this.value)" />
+                <span style="font-size: 12px; color: var(--text-muted);">Porcentaje estimado de propina sobre las ventas (Por defecto: 5%).</span>
+              </div>
+              <div class="form-group">
+                <label for="cfg-ret-perc">Porcentaje de Aporte / Retención (%)</label>
+                <input type="number" id="cfg-ret-perc" class="form-control" min="0" max="100" step="0.1" onchange="updateGlobalConfig('retentionPercentage', this.value)" />
+                <span style="font-size: 12px; color: var(--text-muted);">Porcentaje de la propina estimada que se retiene para el pozo (Por defecto: 30%).</span>
+              </div>
+            </div>
+
+            <h2>Respaldo y Seguridad de Datos</h2>
+            <p style="color: var(--text-secondary); font-size: 14px; margin-bottom: 24px;">
+              Dado que este sistema es portable y no usa bases de datos en la nube, es altamente recomendable exportar periódicamente un respaldo de tus datos.
+            </p>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+              <button class="btn btn-secondary" onclick="exportBackup()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5 5-5-5M12 13V3"/></svg>
+                Exportar Respaldo JSON
+              </button>
+
+              <label class="btn btn-secondary" style="position: relative; overflow: hidden; display: inline-flex; align-items: center; cursor: pointer;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 16l-5-5-5 5M12 3v10"/></svg>
+                <span>Importar Respaldo JSON</span>
+                <input type="file" id="import-backup-file" accept=".json" onchange="importBackup(event)" style="position: absolute; font-size: 100px; opacity: 0; right: 0; top: 0; cursor: pointer;" />
+              </label>
+
+              <button class="btn btn-danger" onclick="resetSystem()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                Restablecer Sistema
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+  </div>
+
+  <!-- MODAL DE RECIBO DE LIQUIDACIÓN -->
+  <div id="receipt-modal" class="modal-backdrop" onclick="if(event.target === this) closeReceiptModal()">
+    <div class="modal-content">
+      <div class="receipt-ticket" id="receipt-ticket-content">
+        <!-- Generado dinámicamente -->
+      </div>
+      <div class="receipt-modal-actions">
+        <button class="btn btn-secondary" onclick="closeReceiptModal()">Cerrar</button>
+        <button class="btn btn-primary" onclick="printReceipt()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Carga del archivo principal de lógica -->
+  <script src="app.js"></script>
+</body>
+</html>
